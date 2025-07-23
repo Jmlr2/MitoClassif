@@ -1,57 +1,15 @@
-name: mitoclass
-display_name: MitoClass
-# use 'hidden' to remove plugin from napari hub search results
-visibility: public
-# see https://napari.org/stable/plugins/technical_references/manifest.html#fields for valid categories
-# categories: []
+schema_version: "0.2.0"
+name: "mitoclass"
+version: "0.0.1"
+display_name: "Mitoclass"
+package: "mitoclass"
+
 contributions:
   commands:
-    - id: mitoclass.get_reader
-      python_name: mitoclass._reader:napari_get_reader
-      title: Open data with MitoClass
-    - id: mitoclass.write_multiple
-      python_name: mitoclass._writer:write_multiple
-      title: Save multi-layer data with MitoClass
-    - id: mitoclass.write_single_image
-      python_name: mitoclass._writer:write_single_image
-      title: Save image data with MitoClass
-    - id: mitoclass.make_sample_data
-      python_name: mitoclass._sample_data:make_sample_data
-      title: Load sample data from MitoClass
-    - id: mitoclass.make_container_widget
-      python_name: mitoclass:ImageThreshold
-      title: Make threshold Container widget
-    - id: mitoclass.make_magic_widget
-      python_name: mitoclass:threshold_magic_widget
-      title: Make threshold magic widget
-    - id: mitoclass.make_function_widget
-      python_name: mitoclass:threshold_autogenerate_widget
-      title: Make threshold function widget
-    - id: mitoclass.make_qwidget
-      python_name: mitoclass:ExampleQWidget
-      title: Make example QWidget
-  readers:
-    - command: mitoclass.get_reader
-      accepts_directories: false
-      filename_patterns: ['*.npy']
-  writers:
-    - command: mitoclass.write_multiple
-      layer_types: ['image*','labels*']
-      filename_extensions: []
-    - command: mitoclass.write_single_image
-      layer_types: ['image']
-      filename_extensions: ['.npy']
-  sample_data:
-    - command: mitoclass.make_sample_data
-      display_name: MitoClass
-      key: unique_id.1
+    - id: mitoclass.open_main_widget
+      title: open Mitoclass
+      python_name: mitoclass._widget:MitoclassWidget
+
   widgets:
-    - command: mitoclass.make_container_widget
-      display_name: Container Threshold
-    - command: mitoclass.make_magic_widget
-      display_name: Magic Threshold
-    - command: mitoclass.make_function_widget
-      autogenerate: true
-      display_name: Autogenerate Threshold
-    - command: mitoclass.make_qwidget
-      display_name: Example QWidget
+    - command: mitoclass.open_main_widget
+      display_name: Mitoclass
