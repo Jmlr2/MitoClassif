@@ -3,7 +3,7 @@
 import random
 import shutil
 from pathlib import Path
-from typing import Union
+from typing import Tuple, Union
 
 import numpy as np
 import pandas as pd
@@ -38,7 +38,7 @@ def train_pipeline_from_patches(
     pretrained_model: Union[str, Path, None] = None,
     delete_patches: bool = False,
     to_8bit: bool = False,
-) -> Tuple[Dict, Path, Tuple[float, float]]:
+) -> Tuple[dict, Path, Tuple[float, float]]:
     """
     Entraîne un modèle à partir d'un répertoire existant de patches
     (structure: train/, val/, test/ + manifest.csv).
@@ -188,9 +188,16 @@ def train_pipeline_from_patches(
     )
 
     # --- Sauvegarde rapports ---
-    report_txt = classification_report(
+    import json
+
+    report_dict = classification_report(
         y_true, y_pred, target_names=target_names, output_dict=True
-    )  # noqa: F841
+    )
+
+    report_txt = json.dumps(
+        report_dict, indent=4
+    )  # Convertir en chaîne JSON formatée
+
     (output_dir / f"{model_name}_classification_report.txt").write_text(
         "Classification Report\n====================\n\n" + report_txt
     )
@@ -235,7 +242,7 @@ def train_pipeline(
     patience: int = 10,
     model_name: str = "best_model",
     pretrained_model: Union[str, Path, None] = None,
-) -> Tuple[Dict, Path, Tuple[float, float]]:
+) -> Tuple[dict, Path, Tuple[float, float]]:
     """
     Pipeline complète : prétraitement + entraînement CNN.
     """

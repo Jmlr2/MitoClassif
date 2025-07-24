@@ -9,7 +9,8 @@
 [![npe2](https://img.shields.io/badge/plugin-npe2-blue?link=https://napari.org/stable/plugins/index.html)](https://napari.org/stable/plugins/index.html)
 [![Copier](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/copier-org/copier/master/img/badge/badge-grayscale-inverted-border-purple.json)](https://github.com/copier-org/copier)
 
-Mitoclassif is a napari plugin for classifying mitochondrial morphology from microscopy images: it allows preprocessing data, training or using a model, predicting classes (connected, fragmented, intermediate), visualizing overlays and 3D summaries, and managing a prediction history.
+
+Mitoclassif is a Napari plugin designed for classifying mitochondrial morphology from microscopy images. It provides a comprehensive pipeline that includes data preprocessing, model training, and class prediction (such as connected, fragmented, or intermediate states). Users can visualize overlays and 3D summaries of the results, as well as manage a prediction history. Additionally, Mitoclassif allows for predictions using a pre-trained model, with the option to further refine the model using custom images, or even retrain a new model from scratch. The plugin also includes intuitive tools for annotating images, facilitating an efficient and flexible workflow for both novice and expert users in the field of microscopy analysis.
 
 ----------------------------------
 

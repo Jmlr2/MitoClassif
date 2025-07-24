@@ -23,32 +23,31 @@ classifiers = [
     "Programming Language :: Python :: 3.13",
     "Topic :: Scientific/Engineering :: Image Processing",
 ]
-requires-python = ">=3.9"
-# napari can be included in dependencies if napari imports are required.
-# However, you should not include napari[all], napari[qt],
-# or any other Qt bindings directly (e.g. PyQt5, PySide2).
-# See best practices: https://napari.org/stable/plugins/building_a_plugin/best_practices.html
+requires-python = ">=3.10"
 dependencies = [
-    "numpy",
+    "numpy",                     # Numpy version compatible with TensorFlow
     "magicgui",
     "qtpy",
     "scikit-image",
+    "tensorflow",                 # Ensure the right version for TensorFlow
+    "pandas",
+    "scikit-learn",               # Ensure correct installation of scikit-learn
+    "napari[all]",                 # Ensuring napari installation
+    "plotly"
 ]
 
 [project.optional-dependencies]
-# Allow easily installation with the full, default napari installation
-# (including Qt backend) using mitoclass[all].
-all = ["napari[all]"]
+all = ["napari[all]"]            # Full installation for napari
 testing = [
     "tox",
-    "pytest",  # https://docs.pytest.org/en/latest/contents.html
-    "pytest-cov",  # https://pytest-cov.readthedocs.io/en/latest/
-    "pytest-qt",  # https://pytest-qt.readthedocs.io/en/latest/
-    "napari[qt]",  # test with napari's default Qt bindings
+    "pytest",
+    "pytest-cov",
+    "pytest-qt",
+    "napari[qt]",
 ]
 
 [project.entry-points."napari.manifest"]
-mitoclass = "mitoclass:napari.yaml"
+mitoclass = "mitoclass:napari.yaml"  # Ensure the right manifest file
 
 [project.urls]
 "Bug Tracker" = "https://github.com/ImHorPhen/mitoclass/issues"
@@ -94,29 +93,13 @@ lint.select = [
 ]
 lint.ignore = [
     "E501", # line too long. let black handle this
-    "UP006", "UP007", # type annotation. As using magicgui require runtime type annotation then we disable this.
+    "UP006", "UP007", # type annotation
 ]
 
 exclude = [
-    ".bzr",
-    ".direnv",
-    ".eggs",
-    ".git",
-    ".mypy_cache",
-    ".pants.d",
-    ".ruff_cache",
-    ".svn",
-    ".tox",
-    ".venv",
-    "__pypackages__",
-    "_build",
-    "buck-out",
-    "build",
-    "dist",
-    "node_modules",
-    "venv",
-    "*vendored*",
-    "*_vendor*",
+    ".bzr", ".direnv", ".eggs", ".git", ".mypy_cache", ".pants.d", ".ruff_cache",
+    ".svn", ".tox", ".venv", "__pypackages__", "_build", "buck-out", "build", "dist",
+    "node_modules", "venv", "*vendored*", "*_vendor*",
 ]
 
 target-version = "py310"

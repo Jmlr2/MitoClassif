@@ -100,7 +100,6 @@ def infer_array(
     if to_8bit:
         img = convert_to_8bit(arr2d).astype(np.float32) / 255.0
     else:
-        print("16 bits")
         pf = arr2d.astype(np.float32)
         mn, mx = pf.min(), pf.max()
         img = (pf - mn) / (mx - mn) if mx > mn else np.zeros_like(pf)
@@ -153,7 +152,7 @@ def load_model(model_path: Path) -> tf.keras.Model:
     class CustomInputLayer(tf.keras.layers.InputLayer):
         def __init__(self, *args, batch_shape=None, **kwargs):
             if batch_shape is not None:
-                kwargs["input_shape"] = tuple(batch_shape[1:])
+                kwargs["shape"] = tuple(batch_shape[1:])
             kwargs.pop("batch_shape", None)
             super().__init__(*args, **kwargs)
 

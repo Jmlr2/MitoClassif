@@ -143,7 +143,6 @@ def preprocess(
             if to_8bit:
                 proc = temp8  # déjà dans [0,255] uint8
             else:
-                print("16 bits")
                 pf = mip.astype(np.float32)
                 mn, mx = pf.min(), pf.max()
                 if mx > mn:
