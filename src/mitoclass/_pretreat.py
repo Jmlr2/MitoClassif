@@ -1,4 +1,4 @@
-# src/mitoclassif/_pretreat.py
+# src/mitoclass/_pretreat.py
 
 """
 Preprocessing pipeline for microscopy image stacks:
@@ -9,8 +9,9 @@ Preprocessing pipeline for microscopy image stacks:
 - Segments via Otsu threshold (on temporary 8-bit copy)
 - Extracts patches with overlap
 - Labels patches as class or background based on minimum mask pixels
-- Saves patches in TIFF format under split/class and produces a manifest CSV
+- Saves patches in TIFF format under split/class and produces a CSV manifest
 """
+
 from pathlib import Path
 
 import numpy as np
@@ -21,12 +22,12 @@ from sklearn.model_selection import train_test_split
 
 
 def max_intensity_projection(data: np.ndarray) -> np.ndarray:
-    """Retourne la projection d'intensité maximale le long de l'axe Z."""
+    """Returns the maximum intensity projection along the Z axis."""
     return data.max(axis=0) if data.ndim > 2 else data
 
 
 def convert_to_8bit(img: np.ndarray) -> np.ndarray:
-    """Normalise l'image sur [0,255] et convertit en uint8 pour segmentation."""
+    """Normalizes the image to [0,255] and converts to uint8 for segmentation."""
     img_f = img.astype(np.float32)
     mn, mx = img_f.min(), img_f.max()
     if mx > mn:
@@ -50,7 +51,7 @@ def get_patch_positions(length: int, size: int, overlap: int) -> list[int]:
 def extract_patches(
     img: np.ndarray, patch_size: tuple[int, int], overlap: tuple[int, int]
 ) -> tuple[int, int, np.ndarray]:
-    """Générateur de patches (x, y, patch) sur l'image 2D avec recouvrement."""
+    """Patch generator (x, y, patch) on 2D image with overlap."""
     h, w = img.shape
     ph, pw = patch_size
     oh, ow = overlap
@@ -72,17 +73,17 @@ def preprocess(
     seed: int = 42,
 ):
     """
-    Exécute la pipeline de prétraitement.
+    Runs the preprocessing pipeline.
 
     Args:
-        input_dir: dossier racine contenant un sous-dossier par classe.
-        output_dir: dossier de sortie pour les patches.
-        splits: fractions pour train/val/test (doivent sommer à 1).
-        patch_size: taille des patches (hauteur, largeur).
-        overlap: recouvrement entre patches (hauteur, largeur).
-        min_mask_pixels: nb. minimal de pixels foreground pour conserver la classe.
-        to_8bit: si True, convertit et sauvegarde les patches en uint8, sinon en uint16.
-        seed: graine pour la reproductibilité du split.
+    input_dir: Root folder containing one subfolder per class.
+    output_dir: Output folder for patches.
+    splits: Splits for train/val/test (must sum to 1).
+    patch_size: Patch size (height, width).
+    overlap: Overlap between patches (height, width).
+    min_mask_pixels: Minimum number of foreground pixels to preserve the class.
+    to_8bit: If True, converts and saves patches to uint8, otherwise to uint16.
+    seed: Seed for split reproducibility.
     """
     input_dir = Path(input_dir)
     output_dir = Path(output_dir)
@@ -90,7 +91,7 @@ def preprocess(
     class_dirs = [d for d in input_dir.iterdir() if d.is_dir()]
     class_names = sorted([d.name for d in class_dirs])
 
-    # 2. Collecte
+    # 2. Collection
     image_paths: list[Path] = []
     labels: list[str] = []
     for cls in class_names:
@@ -101,7 +102,7 @@ def preprocess(
 
     # 3. Stratified split
     class_to_idx = {n: i for i, n in enumerate(class_names)}
-    y = [class_to_idx[label] for label in labels]  # E741 -> clair
+    y = [class_to_idx[label] for label in labels]  # E741 -> clear
     p_train, p_val, p_test = splits
     X_train, X_temp, y_train, y_temp = train_test_split(
         image_paths, y, train_size=p_train, stratify=y, random_state=seed
@@ -120,28 +121,28 @@ def preprocess(
         "test": (X_test, y_test),
     }
 
-    # 4. Arborescence
+    # 4. Tree structure
     for sp in split_data:
         for cls in class_names + ["background"]:
             (output_dir / sp / cls).mkdir(parents=True, exist_ok=True)
 
-    # 5. Patch extraction avec normalisation globale de la MIP
+    # 5. Patch extraction with global MIP normalization
     manifest = []
     for sp, (X_sp, y_sp) in split_data.items():
         for img_path, lbl_idx in zip(X_sp, y_sp, strict=False):
             data = tiff.imread(img_path)
             mip = max_intensity_projection(data)
 
-            # 5.1 segmentation sur une image 8-bits temporaire
+            # 5.1 segmentation on a temporary 8-bit image
             temp8 = convert_to_8bit(mip)
             try:
                 mask = temp8 > threshold_otsu(temp8)
             except Exception:  # noqa: E722
                 mask = temp8 > temp8.mean()
 
-            # 5.2 normalisation globale de la MIP
+            # 5.2 global standardization of MIP
             if to_8bit:
-                proc = temp8  # déjà dans [0,255] uint8
+                proc = temp8  # already in [0,255] uint8
             else:
                 pf = mip.astype(np.float32)
                 mn, mx = pf.min(), pf.max()
@@ -150,7 +151,7 @@ def preprocess(
                 else:
                     proc = np.zeros_like(pf, dtype=np.uint16)
 
-            # 5.3 découpage et sauvegarde des patches
+            # 5.3 cutting and saving patches
             for x, y, patch in extract_patches(proc, patch_size, overlap):
                 n_fg = int(
                     mask[y : y + patch_size[0], x : x + patch_size[1]].sum()
@@ -163,7 +164,9 @@ def preprocess(
 
                 fn = f"{img_path.stem}_x{x}_y{y}.tif"
                 dest = output_dir / sp / out_label / fn
-                tiff.imwrite(str(dest), patch)  # patch déjà en uint8 ou uint16
+                tiff.imwrite(
+                    str(dest), patch
+                )  # patch already in uint8 or uint16
                 manifest.append(
                     {
                         "split": sp,
@@ -176,7 +179,6 @@ def preprocess(
                 )
 
     # 6. Manifest
-    # pd.DataFrame(manifest).to_csv(output_dir/'manifest.csv', index=False)
     pd.DataFrame(manifest).to_csv(
         output_dir / "manifest.csv",
         sep=";",

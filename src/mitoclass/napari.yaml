@@ -1,3 +1,5 @@
+# src/mitoclass/napari.yaml
+
 schema_version: "0.2.0"
 name: "mitoclass"
 version: "0.0.1"

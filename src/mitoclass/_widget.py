@@ -1,6 +1,5 @@
 # src/mitoclass/_widget.py
 
-import contextlib
 import shutil
 import webbrowser
 from pathlib import Path
@@ -28,17 +27,20 @@ from qtpy.QtWidgets import (
 )
 from tifffile import imread
 
+from ._utils import status
+
 
 class MitoclassWidget(QWidget):
     def __init__(self, napari_viewer):
         super().__init__()
-        # ——— États internes ———
-        self.original_stacks = []  # pour l’annotation
+        self._status = lambda msg, msecs=10000: status(msg, msecs, self.viewer)
+        # ———Internal states ———
+        self.original_stacks = []  # for annotation
         self.viewer = napari_viewer
         self.csv_results = None  # master DataFrame
-        self.df_new = None  # résultats session courante
+        self.df_new = None  # current session results
 
-        # ——— Dossier technique pour le CSV maître ———
+        # ———Technical file for the master CSV ———
         appdata = QStandardPaths.writableLocation(
             QStandardPaths.AppDataLocation
         )
@@ -46,26 +48,21 @@ class MitoclassWidget(QWidget):
         self.master_dir.mkdir(parents=True, exist_ok=True)
         self.master_path = self.master_dir / "predictions.csv"
 
-        # Chargement du CSV master s’il existe
+        # Loading the master CSV if it exists
         if self.master_path.exists():
             try:
                 self.csv_results = pd.read_csv(
                     self.master_path,
-                    sep=";",  # point‑virgule comme séparateur
-                    decimal=",",  # virgule comme séparateur décimal
+                    sep=";",
+                    decimal=",",
                     encoding="utf-8-sig",
                 )
             except Exception as e:  # noqa: BLE001
-                # Message d’erreur dans la status bar
-                try:
-                    self.viewer.window._qt_window.statusBar().showMessage(
-                        f"Erreur lecture predictions.csv : {e}", 5000
-                    )
-                except Exception:  # noqa: BLE001
-                    print(f"Erreur lecture predictions.csv : {e}")
+                # Error message in the status bar
+                self._status(f"Error reading predictions.csv: {e}")
                 self.csv_results = None
 
-        # ——— Chemins pour l’inférence ———
+        # ——— Paths for inference ———
         self.paths = {
             "input": None,
             "output": None,
@@ -73,10 +70,11 @@ class MitoclassWidget(QWidget):
             "model": None,
         }
 
-        # ——— Chemins pour l’entraînement ———
-        # pp_input/pp_output pour la partie pré‑traitement,
-        # tr_patches/tr_output pour la partie entraînement,
-        # pretrained_model pour le fine‑tuning optionnel.
+        # ——— Training Paths ———
+        # pp_input/pp_output for the pre-processing part,
+        # tr_patches/tr_output for the training part,
+        # pretrained_model for optional fine-tuning.
+
         self.paths_train = {
             "pp_input": None,
             "pp_output": None,
@@ -85,18 +83,18 @@ class MitoclassWidget(QWidget):
             "pretrained_model": None,
         }
 
-        # ——— Chemins & état pour l’annotation ———
+        # ——— Paths & state for annotation———
         self.paths_annot = {
             "raw_input": None,
             "annot_output": None,
         }
         self.annotations = {}  # {filename: class_label}
-        self.annot_index = 0  # indice courant pour l’annotation
+        self.annot_index = 0  # current index for annotation
 
-        # ——— Champ « Model name » pour l’entraînement ———
+        # ———“Model name” field for training ———
         self.model_name_le = QLineEdit("new_model")
 
-        # Construire l’interface
+        # Building the interface
         self._build_ui()
         default_model = Path(__file__).parent / "models" / "base_model.h5"
         if default_model.exists():
@@ -120,15 +118,15 @@ class MitoclassWidget(QWidget):
         # ——— Training tabs ———
         self.train_tabs = QTabWidget()
 
-        # — Onglet Preprocessing —
+        # — Preprocessing tab —
         self.tab_pp = QWidget()
         pp_layout = QFormLayout(self.tab_pp)
 
-        # 1) Sélection des dossiers
+        # 1) Folder selection
         self.pp_input_btn = QPushButton("Raw data folder")
         self.pp_output_btn = QPushButton("Patches output folder")
 
-        # 2) Paramètres de prétraitement (noms suffixés _pp)
+        # 2) Preprocessing parameters (names suffixed _pp)
         self.bits_pp_combo = QComboBox()
         self.bits_pp_combo.addItems(["8-bit", "16-bit"])
         self.split_pp_spin = QSpinBox()
@@ -147,12 +145,12 @@ class MitoclassWidget(QWidget):
         self.minpix_pp_spin.setRange(0, 100000)
         self.minpix_pp_spin.setValue(100)
 
-        # 3) Bouton et progress bar
+        # 3) Button and progress bar
         self.pp_run_btn = QPushButton("Run preprocessing")
         self.pp_prog = QProgressBar()
         self.pp_prog.setVisible(False)
 
-        # --- Assemblage du form layout ---
+        # --- Form layout assembly ---
         pp_layout.addRow("Raw dir:", self.pp_input_btn)
         pp_layout.addRow("Output dir:", self.pp_output_btn)
         pp_layout.addRow("Bit depth:", self.bits_pp_combo)
@@ -166,17 +164,17 @@ class MitoclassWidget(QWidget):
 
         self.train_tabs.addTab(self.tab_pp, "Preprocessing")
 
-        # — Onglet Training —
+        # — Tab Training —
         self.tab_tr = QWidget()
         tr_layout = QFormLayout(self.tab_tr)
 
-        # 1) Sélection des dossiers et modèles
+        # 1) Selection of files and models
         self.tr_patches_btn = QPushButton("Patches root folder")
         self.tr_output_btn = QPushButton("Model output folder")
         self.pretrained_btn = QPushButton("Choose initial model (.h5)")
         self.clear_pretrained_btn = QPushButton("Clear")
 
-        # 2) Paramètres d’entraînement (noms suffixés _tr)
+        # 2) Training parameters (names suffixed with _tr)
         self.model_name_le = QLineEdit("new_model")
         tr_layout.addRow("Model name:", self.model_name_le)
         self.bits_tr_combo = QComboBox()
@@ -205,14 +203,14 @@ class MitoclassWidget(QWidget):
         self.train_prog = QProgressBar()
         self.train_prog.setVisible(False)
 
-        # 3) Container pour pretrained + clear
+        # 3) Container for pretrained + clear
         container_pretrained = QWidget()
         hpre = QHBoxLayout(container_pretrained)
         hpre.setContentsMargins(0, 0, 0, 0)
         hpre.addWidget(self.pretrained_btn)
         hpre.addWidget(self.clear_pretrained_btn)
 
-        # --- Assemblage du form layout ---
+        # --- Form layout assembly ---
         tr_layout.addRow("Patches dir:", self.tr_patches_btn)
         tr_layout.addRow("Model out dir:", self.tr_output_btn)
         tr_layout.addRow("Initial model (opt.):", container_pretrained)
@@ -344,7 +342,7 @@ class MitoclassWidget(QWidget):
         )
         self.clear_pretrained_btn.clicked.connect(self._clear_pretrained_model)
         self.train_btn_exec.clicked.connect(self._run_training_only)
-        # Inference tab (inchangé)
+        # Inference tab
         self.btn_infer.clicked.connect(
             lambda: self.stack.setCurrentWidget(self.page_infer)
         )
@@ -357,7 +355,7 @@ class MitoclassWidget(QWidget):
         self.view_3d_btn.clicked.connect(self._show_3d)
         self.clear_master_btn.clicked.connect(self._clear_master)
         self.layer_infer_btn.clicked.connect(self._infer_active_layer)
-        # Annotation tab (inchangé)
+        # Annotation tab
         self.raw_input_btn.clicked.connect(
             lambda: self._choose_dir_annot("raw_input")
         )
@@ -369,13 +367,6 @@ class MitoclassWidget(QWidget):
         self.next_btn.clicked.connect(lambda: self._step_annotation(1))
         self.export_btn.clicked.connect(self._export_annotations)
         self.clear_annotations_btn.clicked.connect(self._clear_annotations)
-
-    def _status(self, message: str, msecs: int = 10000):
-        with contextlib.suppress(Exception):
-            self.viewer.window._qt_window.statusBar().showMessage(
-                message, msecs
-            )
-        print(message)
 
     def _infer_active_layer(self):
         """Run Mitoclass on the active layer in Napari."""
@@ -425,10 +416,8 @@ class MitoclassWidget(QWidget):
         self.paths_train[key] = Path(d)
 
         # update corresponding button text
-        # assumes you have buttons named: pp_input_btn, pp_output_btn, tr_patches_btn, tr_output_btn
         btn = getattr(self, f"{key}_btn", None)
         if btn is not None:
-            # title‐case the key (e.g. 'pp_input' → 'Pp Input') or customise as you like
             label = key.replace("_", " ").title()
             btn.setText(f"{label}: {d}")
 
@@ -462,7 +451,7 @@ class MitoclassWidget(QWidget):
         pp_out = self.paths_train.get("pp_output")
         if pp_in is None or pp_out is None:
             return self._status(
-                "Veuillez sélectionner les dossiers de raw et de sortie des patches."
+                "Please select the raw and output folders for the patches."
             )
 
         @thread_worker(
@@ -478,12 +467,12 @@ class MitoclassWidget(QWidget):
         def worker():
             from ._pretreat import preprocess
 
-            # reconstituer les splits
+            # rebuild the splits
             p_train = self.split_pp_spin.value() / 100
             p_val = self.split_pp_spin_val.value() / 100
             p_test = 1.0 - p_train - p_val
 
-            # paramètres de découpe
+            # cutting parameters
             patch_size = (self.patch_pp_spin.value(),) * 2
             overlap = (self.ov_pp_spin.value(),) * 2
             min_pix = self.minpix_pp_spin.value()
@@ -526,7 +515,6 @@ class MitoclassWidget(QWidget):
                 "Please select patches folder and model output folder first."
             )
 
-        # Callback clairs pour gérer UI
         def on_train_started():
             self.train_prog.setRange(0, 0)
             self.train_prog.setVisible(True)
@@ -575,11 +563,9 @@ class MitoclassWidget(QWidget):
                 delete_patches=delete,
             )
 
-        # on garde la référence pour pouvoir annuler
         self.train_worker = worker()
 
     def _handle_train_finished(self, res):
-        # res = (history_dict, model_path:Path, (test_loss, test_acc))
         _, model_path, (test_loss, test_acc) = res
         self._status(
             f"Training finished — Model: {model_path.name} | "
@@ -594,13 +580,15 @@ class MitoclassWidget(QWidget):
         """
         msg = str(error)
         if "OOM" in msg or isinstance(error, tf.errors.ResourceExhaustedError):
-            self._status(
+            status(
                 "Training error: GPU memory exhausted. "
                 "You may want to restart Napari or try a smaller batch size.",
                 msecs=10000,
+                viewer=self.viewer,
             )
         else:
-            self._status(f"Training error: {error}", msecs=10000)
+            status(f"Training error: {error}", msecs=10000, viewer=self.viewer)
+
         self.train_prog.setVisible(False)
         self.train_btn_exec.setEnabled(True)
 
@@ -618,11 +606,10 @@ class MitoclassWidget(QWidget):
             self.paths["model"] = Path(f)
             self.model_path_btn.setText(f"Model: {Path(f).name}")
         else:
-            # si l'utilisateur annule
             self._status("No model selected.")
 
     def _run_inference(self):
-        # 1) Vérification des chemins (input, output, map et model sont tous requis)
+        # 1) Path verification (input, output, map and model are all required)
         missing = [
             k
             for k in ("input", "output", "map", "model")
@@ -634,7 +621,7 @@ class MitoclassWidget(QWidget):
 
         from ._processor import process_folder
 
-        # 2) Paramètres UI
+        # 2) UI Settings
         images = [
             p
             for p in sorted(self.paths["input"].iterdir())
@@ -650,7 +637,7 @@ class MitoclassWidget(QWidget):
         batch_size = self.batch_spin.value()
         to_8bit = self.bits_inf_combo.currentText().startswith("8")
 
-        # 3) Configuration de la barre de progression
+        # 3) Configuring the progress bar
         self.progress.setRange(0, total)
         self.progress.setValue(0)
         self.progress.setVisible(True)
@@ -714,13 +701,17 @@ class MitoclassWidget(QWidget):
         """Handle inference errors; if GPU OOM, suggest restart or smaller batch."""
         msg = str(error)
         if "OOM" in msg or isinstance(error, tf.errors.ResourceExhaustedError):
-            self._status(
+            status(
                 "Inference error: GPU memory exhausted. "
                 "You may want to restart Napari or try a smaller batch size.",
                 msecs=10000,
+                viewer=self.viewer,
             )
         else:
-            self._status(f"Inference error: {error}", msecs=10000)
+            status(
+                f"Inference error: {error}", msecs=10000, viewer=self.viewer
+            )
+
         self.progress.setVisible(False)
         self.run_btn.setEnabled(True)
 
@@ -737,7 +728,7 @@ class MitoclassWidget(QWidget):
         for tif in sorted(self.paths["map"].glob("*_map.tif")):
             img = imread(tif)
             layer = self.viewer.add_image(img, name=tif.stem, rgb=True)
-            layer.colormap = "gray"
+            # layer.colormap = "gray"
 
     def _show_3d(self):
         if self.csv_results is None or self.df_new is None:
@@ -751,9 +742,9 @@ class MitoclassWidget(QWidget):
         ).copy()
 
         # Mapping texte → couleur
-        label_map = {1: "Connecté", 2: "Fragmenté", 3: "Intermédiaire"}
-        df_plot["Classe"] = (
-            df_plot["global_class"].map(label_map).fillna("Fond")
+        label_map = {1: "Connected", 2: "Fragmented", 3: "Intermediate"}
+        df_plot["Class"] = (
+            df_plot["global_class"].map(label_map).fillna("background")
         )
 
         fig = px.scatter_3d(
@@ -762,17 +753,17 @@ class MitoclassWidget(QWidget):
             y="pct_fragmented",
             z="pct_intermediate",
             hover_name="image",
-            color="Classe",
+            color="Class",
             color_discrete_map={
-                "Connecté": "red",
-                "Fragmenté": "green",
-                "Intermédiaire": "blue",
-                "Fond": "gray",
+                "Connected": "red",
+                "Fragmented": "green",
+                "Intermediate": "blue",
+                "background": "gray",
             },
-            title=f"Distribution 3D des classes ({source})",
+            title=f"3D distribution of classes ({source})",
         )
 
-        # 3) Sauvegarde et affichage du graphique
+        # 3) Saving and displaying the graph
         self.master_dir.mkdir(parents=True, exist_ok=True)
         out_path = self.paths["output"] / "graph3d.html"
         fig.write_html(str(out_path), include_plotlyjs="cdn")
@@ -813,19 +804,19 @@ class MitoclassWidget(QWidget):
             #     self._display_current()
 
     def _update_classes(self):
-        """(Re)construit la zone de boutons de classe."""
-        # 1) Récupère les labels
+        """(Re)built the class button area."""
+        # 1) Retrieve the labels
         classes = [
             c.strip() for c in self.classes_le.text().split(";") if c.strip()
         ]
 
-        # 2) Vide les anciens boutons
+        # 2) Empty the old buttons
         for i in reversed(range(self.buttons_layout.count())):
             w = self.buttons_layout.itemAt(i).widget()
             if w:
                 w.setParent(None)
 
-        # 3) Crée un bouton par classe
+        # 3) Create one button per class
         for cls in classes:
             btn = QPushButton(cls)
             btn.clicked.connect(lambda _, c=cls: self._assign_and_next(c))
@@ -843,7 +834,7 @@ class MitoclassWidget(QWidget):
             done, total = len(self.annotations), len(self.original_stacks)
             self.annot_status_lbl.setText(f"{done} / {total} annotated")
 
-        # Avance puis affiche la nouvelle image
+        # Advance then display the new image
         self.annot_index += 1
         self._display_current()
 
@@ -917,30 +908,31 @@ class MitoclassWidget(QWidget):
         worker()
 
     def _display_current(self):
-        """Affiche l’image à self.annot_index et met en surbrillance son annotation."""
+        """Displays the image at self.annot_index and highlights its annotation."""
         if not self.original_stacks:
             return
 
-        # 1) Clamp et wrap autour
+        # 1) Clamp and wrap around
         n = len(self.original_stacks)
         self.annot_index %= n
         img_path = self.original_stacks[self.annot_index]
 
-        # 2) Affichage dans Napari
+        # 2) Display in Napari
         stack = imread(img_path)
         self.viewer.layers.clear()
         self.viewer.add_image(stack, name=img_path.name)
 
-        # 3) Mettre à jour le statut
+        # 3) Update status
         done = len(self.annotations)
         self.annot_status_lbl.setText(f"{done} / {n} annotated")
 
-        # 4) Reconstruction des boutons et mise en surbrillance
-        #    (on utilise la même méthode que _update_classes pour créer les boutons)
+        # 4) Rebuilding the buttons and highlighting
+        # (we use the same method as _update_classes to create the buttons)
+
         self._update_classes()
         current_label = self.annotations.get(img_path.name)
         for btn in self.buttons_widget.findChildren(QPushButton):
-            # si c’est le bouton de la classe courante → on le souligne
+            # if it is the button of the current class → we underline it
             if btn.text() == current_label:
                 btn.setStyleSheet(
                     "font-weight: bold; text-decoration: underline;"
@@ -949,7 +941,7 @@ class MitoclassWidget(QWidget):
                 btn.setStyleSheet("")
 
     def _step_annotation(self, delta: int):
-        """Déplace l’index de +1 ou -1 et réaffiche."""
+        """Moves the index by +1 or -1 and redisplays."""
         if not self.original_stacks:
             return
         self.annot_index += delta

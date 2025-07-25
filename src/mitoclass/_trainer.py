@@ -1,4 +1,4 @@
-# src/mitoclassif/_trainer.py
+# src/mitoclass/_trainer.py
 
 import random
 import shutil
@@ -22,8 +22,8 @@ from tensorflow.keras.models import Sequential
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 
-# Import pipeline de prétraitement
 from ._pretreat import preprocess
+from ._utils import status
 
 
 def train_pipeline_from_patches(
@@ -40,7 +40,7 @@ def train_pipeline_from_patches(
     to_8bit: bool = False,
 ) -> Tuple[dict, Path, Tuple[float, float]]:
     """
-    Entraîne un modèle à partir d'un répertoire existant de patches
+    Trains a model from an existing patch directory
     (structure: train/, val/, test/ + manifest.csv).
     """
     patches_root = Path(patches_root)
@@ -48,7 +48,7 @@ def train_pipeline_from_patches(
     val_dir = patches_root / "val"
     test_dir = patches_root / "test"
 
-    # --- Générateurs avec normalisation et (pour train) data augmentation D4 ---
+    # --- Generators with normalization and (for train) data augmentation D4 ---
     def apply_d4(img: np.ndarray) -> np.ndarray:
         choice = random.randint(0, 7)
         if choice == 0:
@@ -93,7 +93,7 @@ def train_pipeline_from_patches(
         shuffle=False,
     )
 
-    # --- Calcul des class_weights ---
+    # --- Calculating class_weights ---
     num_classes = len(train_gen.class_indices)
     labels = train_gen.classes
     cw = compute_class_weight(
@@ -101,7 +101,7 @@ def train_pipeline_from_patches(
     )
     class_weights = dict(enumerate(cw))  # C416
 
-    # --- Construction du modèle ---
+    # --- Building the model ---
     sample_x, _ = next(train_gen)
     input_shape = sample_x.shape[1:]
     if pretrained_model:
@@ -136,7 +136,7 @@ def train_pipeline_from_patches(
             metrics=["accuracy"],
         )
 
-    # --- Callbacks et entraînement ---
+    # --- Callbacks and training ---
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     model_path = output_dir / f"{model_name}.h5"
@@ -154,7 +154,6 @@ def train_pipeline_from_patches(
         class_weight=class_weights,
         callbacks=[checkpoint, earlystop],
     )
-    # pd.DataFrame(history.history).to_csv(output_dir / f"{model_name}_history.csv", index=False)
     pd.DataFrame(history.history).to_csv(
         output_dir / f"{model_name}_history.csv",
         sep=";",
@@ -163,7 +162,7 @@ def train_pipeline_from_patches(
         index=False,
     )
 
-    # --- Évaluation sur le test set ---
+    # --- Evaluation on the test set ---
     test_gen = ImageDataGenerator(
         preprocessing_function=normalize
     ).flow_from_directory(
@@ -176,7 +175,7 @@ def train_pipeline_from_patches(
     )
     test_loss, test_acc = model.evaluate(test_gen, verbose=0)
 
-    # --- Rapport de classification
+    # --- Classification repor ---
     y_true = test_gen.classes
     test_gen.reset()
     y_proba = model.predict(test_gen, verbose=0)
@@ -187,7 +186,7 @@ def train_pipeline_from_patches(
         y_true, y_pred, target_names=target_names, output_dict=True
     )
 
-    # --- Sauvegarde rapports ---
+    # --- Save reports ---
     import json
 
     report_dict = classification_report(
@@ -196,7 +195,7 @@ def train_pipeline_from_patches(
 
     report_txt = json.dumps(
         report_dict, indent=4
-    )  # Convertir en chaîne JSON formatée
+    )  # Convert to JSON formatted string
 
     (output_dir / f"{model_name}_classification_report.txt").write_text(
         "Classification Report\n====================\n\n" + report_txt
@@ -215,7 +214,7 @@ def train_pipeline_from_patches(
         index=False,
     )
 
-    # --- Suppression optionnelle des sous‑dossiers train/val/test ---
+    # --- Optional deletion of train/val/test subfolders ---
     if delete_patches:
         for subset in ("train", "val", "test"):
             dir_to_remove = patches_root / subset
@@ -223,7 +222,7 @@ def train_pipeline_from_patches(
                 try:
                     shutil.rmtree(dir_to_remove)
                 except Exception as e:  # noqa: BLE001
-                    print(f"Impossible de supprimer {dir_to_remove}: {e}")
+                    status(f"Unable to delete {dir_to_remove}: {e}")
     return history.history, model_path, (test_loss, test_acc)
 
 
@@ -244,9 +243,9 @@ def train_pipeline(
     pretrained_model: Union[str, Path, None] = None,
 ) -> Tuple[dict, Path, Tuple[float, float]]:
     """
-    Pipeline complète : prétraitement + entraînement CNN.
+    Complete pipeline: preprocessing + CNN training.
     """
-    # 1. Prétraitement
+    # 1. Pretreatment
     preprocess(
         input_dir=Path(input_dir),
         output_dir=Path(output_dir),
@@ -257,7 +256,7 @@ def train_pipeline(
         to_8bit=to_8bit,
         seed=seed,
     )
-    # 2. Entraînement à partir des patches générés
+    # 2. Training from generated patches
     return train_pipeline_from_patches(
         patches_root=output_dir,
         output_dir=output_dir,

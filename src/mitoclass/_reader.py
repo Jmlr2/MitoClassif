@@ -1,3 +1,6 @@
+# src/mitoclass/_reader.py
+
+
 """
 This module is an example of a barebones numpy reader plugin for napari.
 

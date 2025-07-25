@@ -1,80 +1,164 @@
-# mitoclass
+# Mitoclass
 
-[![License GNU GPL v3.0](https://img.shields.io/pypi/l/mitoclass.svg?color=green)](https://github.com/ImHorPhen/mitoclass/raw/main/LICENSE)
-[![PyPI](https://img.shields.io/pypi/v/mitoclass.svg?color=green)](https://pypi.org/project/mitoclass)
-[![Python Version](https://img.shields.io/pypi/pyversions/mitoclass.svg?color=green)](https://python.org)
-[![tests](https://github.com/ImHorPhen/mitoclass/workflows/tests/badge.svg)](https://github.com/ImHorPhen/mitoclass/actions)
-[![codecov](https://codecov.io/gh/ImHorPhen/mitoclass/branch/main/graph/badge.svg)](https://codecov.io/gh/ImHorPhen/mitoclass)
-[![napari hub](https://img.shields.io/endpoint?url=https://api.napari-hub.org/shields/mitoclass)](https://napari-hub.org/plugins/mitoclass)
-[![npe2](https://img.shields.io/badge/plugin-npe2-blue?link=https://napari.org/stable/plugins/index.html)](https://napari.org/stable/plugins/index.html)
-[![Copier](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/copier-org/copier/master/img/badge/badge-grayscale-inverted-border-purple.json)](https://github.com/copier-org/copier)
+[![License: GPL v3](https://img.shields.io/badge/License-GPL%20v3-blue.svg)](LICENSE)
+[![PyPI](https://img.shields.io/pypi/v/mitoclass.svg)](https://pypi.org/project/mitoclass/)
+[![Python ≥ 3.10](https://img.shields.io/badge/python-%3E%3D3.10-blue.svg)]()
+[![napari‑hub](https://img.shields.io/badge/napari--hub-mitoclass-orange.svg)](https://github.com/napari/napari-hub)
 
+A **napari** plugin for the **qualitative** assessment of mitochondrial network morphology.
 
-Mitoclassif is a Napari plugin designed for classifying mitochondrial morphology from microscopy images. It provides a comprehensive pipeline that includes data preprocessing, model training, and class prediction (such as connected, fragmented, or intermediate states). Users can visualize overlays and 3D summaries of the results, as well as manage a prediction history. Additionally, Mitoclassif allows for predictions using a pre-trained model, with the option to further refine the model using custom images, or even retrain a new model from scratch. The plugin also includes intuitive tools for annotating images, facilitating an efficient and flexible workflow for both novice and expert users in the field of microscopy analysis.
+---
 
-----------------------------------
+## 1. Overview
 
-This [napari] plugin was generated with [copier] using the [napari-plugin-template].
+Mitoclass provides an end‑to‑end workflow to classify mitochondrial morphology—**connected**, **fragmented**, or **intermediate**—directly inside the napari viewer.
+Beyond inference, the plugin offers tools for :
 
-<!--
-Don't miss the full getting started guide to set up your new package:
-https://github.com/napari/napari-plugin-template#getting-started
+- data annotation;
+- model training and improvement;
+- interactive result visualisation.
 
-and review the napari docs for plugin developers:
-https://napari.org/stable/plugins/index.html
--->
+All functionality is accessible through a graphical user interface.
 
-## Installation
+---
 
-You can install `mitoclass` via [pip]:
+## 2. Key features
 
-```
+| Module            | Functionality                                                                                                                                                                       |
+|-------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Prediction**    | Pixel‑wise classification of 3‑D stacks (automatic maximum‑intensity projection). Batch processing, class overlays, per‑image statistics, CSV summary.                              |
+| **Annotation**    | Fast image labelling to standardise classes for model training.                                                                                                                     |
+| **Pre‑processing**| Generation of normalised patches with stratified *train/val/test* split.                                                                                                            |
+| **Training**      | Train a CNN or **fine‑tune** existing models.                                                                                                                                       |
+| **Visualisation** | Interactive heatmaps and 3‑D scatter plots (Plotly) of class proportions.                                                                                                           |
+
+---
+
+## 3. Requirements
+
+- **Python** ≥ 3.10
+- **Operating systems**: Linux, macOS, or Windows
+- **Hardware**: CPU supported; GPU (CUDA 11+) recommended for large‑scale inference and training
+
+---
+
+## 4. Installation
+
+### 4.1. Stable release (PyPI)
+
+```bash
 pip install mitoclass
 ```
 
-If napari is not already installed, you can install `mitoclass` with napari and Qt via:
+> Installs the plugin and its dependencies (napari, Qt, etc.).
+
+### 4.2. Reproducible conda environment
+
+```bash
+conda create -n mitoclass python=3.10
+conda activate mitoclass
+
+# (Optional) TensorFlow GPU (e.g. Linux CUDA 11.8)
+conda install -c conda-forge cudnn=8.9 cuda11.8 tensorflow
+
+pip install mitoclass
+```
+
+💡 **Apple Silicon**: use `tensorflow-macos` instead.
+
+### 4.3. Download the pre‑trained model
+
+<https://github.com/Jmlr2/MitoClassif/releases>
+
+---
+
+## 5. Usage
+
+### 5.1. Graphical interface
+
+```bash
+napari
+```
+
+1. Open the **Mitoclass** widget from the **Plugins** menu.
+2. Select the desired tab.
+
+---
+
+### 5.2. Annotation
+
+| Item        | Description                                                                                                                                                                      |
+|-------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Goal**    | Create an *image → class* mapping to bootstrap or expand a training dataset.                                                                                                     |
+| **Input**   | Folder of unlabelled images (`*.tif`, `*.tiff`, `*.stk`).                                                                                                                         |
+| **Output**  | Images copied or moved to `annot_output/<ClassName>/`, sorted into one folder per class.                                                                                          |
+
+---
+
+### 5.3. Pre‑processing
+
+**Goal**: convert 3‑D stacks into normalised 2‑D patches for CNN training.
+
+**Input structure**:
 
 ```
-pip install "mitoclass[all]"
+raw_input/
+├── Connected/
+├── Fragmented/
+└── Intermediate/
 ```
 
+**Steps**:
 
-To install latest development version :
+1. Maximum‑intensity projection (MIP)
+2. Intensity normalisation (8‑bit or 16‑bit)
+3. Otsu segmentation
+4. Patch extraction (configurable size/overlap)
+5. Patch labelling (class vs. background)
+6. Stratified *train/val/test* split
+
+**Output structure**:
 
 ```
-pip install git+https://github.com/ImHorPhen/mitoclass.git
+pp_output/
+├── train/
+│   ├── Connected/
+│   ├── Fragmented/
+│   ├── Intermediate/
+│   └── background/
+├── val/
+├── test/
+└── manifest.csv
 ```
 
+**CSV columns**: `split`, `original`, `x`, `y`, `label`, `patch_path`
 
+---
 
-## Contributing
+### 5.4. Training
 
-Contributions are very welcome. Tests can be run with [tox], please ensure
-the coverage at least stays the same before you submit a pull request.
+| Item          | Description                                                                                                                                                                  |
+|---------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Goal**      | Train a CNN (or **fine‑tune** an existing model) on the patches.                                                                                                              |
+| **Input**     | Patch folders (`train/`, `val/`, `test/`).                                                                                                                                    |
+| **Parameters**| Patch size, batch size, epochs, learning rate, patience, bit depth, pre‑trained model (`.h5`).                                                                               |
+| **Outputs**   | In the output directory: `best_model.h5`, `best_model_history.csv`, `best_model_test_metrics.csv`, `best_model_classification_report.txt`.                                    |
 
-## License
+---
 
-Distributed under the terms of the [GNU GPL v3.0] license,
-"mitoclass" is free and open source software
+### 5.5. Prediction / Inference
 
-## Issues
+| Item          | Description                                                                                                                                                                              |
+|---------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Goal**      | Classify new images/stacks and compute class proportions.                                                                                                                                |
+| **Inputs**    | - Folder of images (`.tif`, `.tiff`, `.stk`, `.png`) ; <br>- Active layer in napari                                                                                                      |
+| **Parameters**| Patch size, overlap, batch size, bit‑depth conversion, model path (`.h5`).                                                                                                               |
+| **Outputs**   | - `predictions.csv` (image, % connected, % fragmented, % intermediate, *global_class*) ; <br>- Folder of heatmaps (`*_map.tif`) ; <br>- Optional global summary CSV                     |
+| **Interactive**| Overlay in napari and interactive 3‑D scatter plot (`graph3d.html`).                                                                                                                    |
 
-If you encounter any problems, please [file an issue] along with a detailed description.
+---
 
-[napari]: https://github.com/napari/napari
-[copier]: https://copier.readthedocs.io/en/stable/
-[@napari]: https://github.com/napari
-[MIT]: http://opensource.org/licenses/MIT
-[BSD-3]: http://opensource.org/licenses/BSD-3-Clause
-[GNU GPL v3.0]: http://www.gnu.org/licenses/gpl-3.0.txt
-[GNU LGPL v3.0]: http://www.gnu.org/licenses/lgpl-3.0.txt
-[Apache Software License 2.0]: http://www.apache.org/licenses/LICENSE-2.0
-[Mozilla Public License 2.0]: https://www.mozilla.org/media/MPL/2.0/index.txt
-[napari-plugin-template]: https://github.com/napari/napari-plugin-template
+## 6. Licence
 
-[file an issue]: https://github.com/ImHorPhen/mitoclass/issues
-
-[napari]: https://github.com/napari/napari
-[tox]: https://tox.readthedocs.io/en/latest/
-[pip]: https://pypi.org/project/pip/
-[PyPI]: https://pypi.org/
+This software is released under the **GNU GPL v3** licence.
+Refer to the [LICENSE](LICENSE) file for details.

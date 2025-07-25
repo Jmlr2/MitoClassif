@@ -1,4 +1,4 @@
-# src/mitoclassif/_processor.py
+# src/mitoclass/_processor.py
 
 from __future__ import annotations
 
@@ -25,7 +25,7 @@ def aggregate_pixelwise(
     img_shape: tuple[int, int],
     patch_size: tuple[int, int],
 ) -> np.ndarray:
-    """Agrège pixel par pixel la meilleure classe selon le score."""
+    """Aggregate pixel by pixel the best class according to the score."""
     ph, pw = patch_size
     H, W = img_shape
     best_score = np.full((H, W), -np.inf, dtype=np.float32)
@@ -39,7 +39,7 @@ def aggregate_pixelwise(
 
 
 def compute_statistics(best_class: np.ndarray) -> tuple[dict[int, float], int]:
-    """Calcule proportions et global_class d'une carte de classes."""
+    """Calculate proportions and global_class of a class map."""
     mask = best_class > 0
     total = int(mask.sum())
     proportions: dict[int, float] = {}
@@ -65,38 +65,37 @@ def infer_array(
     to_8bit: bool = False,
 ) -> np.ndarray:
     """
-    Infère la classification d'un tableau en mémoire (2D ou 3D stack).
+    Infers the classification of an in-memory array (2D or 3D stack).
 
     Parameters
     ----------
-    data : np.ndarray
-        Image 2D (Y, X) ou stack 3D (Z, Y, X) ou plus large (napari peut contenir
-        canaux, temps...). Seuls les deux DERNIERS axes seront pris comme image.
-    model : tf.keras.Model
-        Modèle Keras chargé.
+    data: np.ndarray
+    2D image (Y, X) or 3D stack (Z, Y, X) or larger (napari can contain
+    channels, time, etc.). Only the LAST two axes will be used as the image.
+    model: tf.keras.Model
+    Loaded Keras model.
     patch_size, overlap, batch_size, to_8bit
-        Idem que `infer_image`.
+    Same as `infer_image`.
 
     Returns
     -------
-    best_class : np.ndarray (uint8, shape=(Y, X))
-        Carte de classes agrégée pixelwise.
+    best_class: np.ndarray (uint8, shape=(Y, X))
+    Pixel-wise aggregated class map.
     """
-    # --- squeeze to 2D (MIP sur la profondeur si >2D) --------------------
-    # --- squeeze to 2D ou convertir RGB→gris / MIP si stack multidim. ---
+    # --- squeeze to 2D (MIP on depth if >2D) --------------------
     arr = np.asarray(data)
-    # Si image RGB ou RGBA (H, W, 3 ou 4) → convertir en gris
+    # f RGB or RGBA (H, W, 3 or 4) image → convert to gray
     if arr.ndim == 3 and arr.shape[-1] in (3, 4):
-        # moyenne des 3 canaux couleur
+        # average of the 3 color channels
         arr = arr[..., :3].mean(axis=-1)
-    # Si stack >2D (e.g. (Z, Y, X) ou (T, Z, Y, X)) → MIP sur tous les axes sauf les 2 derniers
+    # If stack >2D (e.g. (Z, Y, X))→ MIP on all axes except the last 2
     elif arr.ndim > 2:
         reduce_axes = tuple(range(arr.ndim - 2))
         arr = arr.max(axis=reduce_axes)
-    # À présent arr est garanti 2D (Y, X)
+    # Now arr is guaranteed to be 2D (Y, X)
     arr2d = arr
 
-    # Normalisation même logique que dans infer_image
+    # Normalization same logic as in infer_image
     if to_8bit:
         img = convert_to_8bit(arr2d).astype(np.float32) / 255.0
     else:
@@ -131,7 +130,7 @@ def infer_image(
     batch_size: int = 128,
     to_8bit: bool = False,
 ) -> np.ndarray:
-    """Version historique qui lit sur disque puis appelle infer_array."""
+    """Version that reads from disk and then calls infer_array."""
     data = tiff.imread(path)
     return infer_array(
         data=data,
@@ -143,7 +142,7 @@ def infer_image(
     )
 
 
-# ——————————— Chargement du modèle & traitement de dossier ——————————— #
+# ——————————— Model loading & file processing ——————————— #
 
 
 def load_model(model_path: Path) -> tf.keras.Model:
@@ -174,34 +173,34 @@ def make_overlay_rgb(
     alpha_map: float = 0.3,
 ) -> np.ndarray:
     """
-    Construit une image RGB overlay pour affichage, en gérant :
-      - stacks multi-axes -> MIP sur tous les axes sauf les deux derniers,
-      - images RGB/RGBA -> conversion en gris,
-      - dtype non-uint8 -> convert_to_8bit automatique,
-      - recadrage si base_img et class_map ont des tailles differentes.
+    Builds an RGB overlay image for display, handling:
+    - multi-axis stacks -> MIP on all axes except the last two,
+    - RGB/RGBA images -> conversion to grayscale,
+    - non-uint8 dtype -> automatic convert_to_8bit,
+    - cropping if base_img and class_map have different sizes.
     """
     arr = np.asarray(base_img)
 
-    # 1) RGB/RGBA -> moyenne des 3 canaux
+    # 1) RGB/RGBA -> average of the 3 channels
     if arr.ndim == 3 and arr.shape[-1] in (3, 4):
         arr2d = arr[..., :3].astype(np.float32).mean(axis=-1)
-    # 2) Stack >2D -> MIP sur tous les axes sauf X et Y
+    # 2) Stack >2D -> MIP on all axes except X and Y
     elif arr.ndim > 2:
         reduce_axes = tuple(range(arr.ndim - 2))
         arr2d = arr.max(axis=reduce_axes)
     else:
         arr2d = arr.astype(np.float32)
 
-    # 3) Convertir en uint8 si besoin
+    # 3) Convert to uint8 if needed
     if arr2d.dtype != np.uint8:
         from ._pretreat import convert_to_8bit
 
         arr2d = convert_to_8bit(arr2d)
 
-    # 4) Empiler en RGB
+    # 4) Stack in RGB
     base_rgb = np.stack([arr2d] * 3, axis=-1)
 
-    # 4b) Recadrage si mismatch de dimensions
+    # 4b) Crop if dimension mismatch
     bh, bw = base_rgb.shape[:2]
     ch, cw = class_map.shape
     if (bh, bw) != (ch, cw):
@@ -209,20 +208,20 @@ def make_overlay_rgb(
         base_rgb = base_rgb[:H, :W]
         class_map = class_map[:H, :W]
 
-    # 5) Couleurs par defaut
+    # 5) Default colors
     if colors is None:
         colors = {
-            1: (255, 0, 0),  # connecté en rouge
-            2: (0, 255, 0),  # fragmenté en vert
-            3: (0, 0, 255),  # intermédiaire en bleu
+            1: (255, 0, 0),  # connected in red
+            2: (0, 255, 0),  # fragmented in green
+            3: (0, 0, 255),  # intermediate in blue
         }
 
-    # 6) Construire la carte couleur
+    # 6) Build the color map
     color_map = np.zeros_like(base_rgb)
     for cls, rgb in colors.items():
         color_map[class_map == cls] = rgb
 
-    # 7) Fusion alpha et retour
+    # 7) Alpha Merge and Return
     return (base_rgb * alpha_base + color_map * alpha_map).astype(np.uint8)
 
 
@@ -237,8 +236,8 @@ def process_folder(
     to_8bit: bool = False,
 ) -> Iterator[Union[int, pd.DataFrame]]:
     """
-    Traite un dossier d'images et yield l'indice pour la progression à chaque image.
-    En fin de traitement, return le DataFrame des résultats.
+    Processes a folder of images and returns the progress index for each image.
+    When finished, returns the results DataFrame.
     """
     model = load_model(model_path)
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -252,7 +251,7 @@ def process_folder(
     results: list[dict] = []
 
     for idx, img_path in enumerate(images, start=1):
-        # inférence
+        # inference
         best_class = infer_image(
             img_path,
             model,
@@ -277,10 +276,10 @@ def process_folder(
         overlay = make_overlay_rgb(data, best_class)
         tiff.imwrite(map_dir / f"{img_path.stem}_map.tif", overlay)
 
-        # yield l'indice pour la progression
+        # yield the index for progression
         yield idx
 
-    # fin de boucle → on compose le DataFrame, on l'exporte et on le return
+    # end of loop → we compose the DataFrame, we export it and we return it
     df = pd.DataFrame(results)
 
     df.to_csv(

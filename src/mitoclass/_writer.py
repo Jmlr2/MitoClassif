@@ -1,3 +1,5 @@
+# src/mitoclass/_writer.py
+
 """
 This module is an example of a barebones writer plugin for napari.
 

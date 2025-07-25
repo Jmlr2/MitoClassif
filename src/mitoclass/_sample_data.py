@@ -1,3 +1,6 @@
+# src/mitoclass/_sample_data.py
+
+
 """
 This module is an example of a barebones sample data provider for napari.
 

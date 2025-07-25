@@ -1,4 +1,4 @@
-# src/mitoclassif/ _annotator.py
+# src/mitoclass/ _annotator.py
 
 import json
 import shutil
@@ -8,8 +8,8 @@ from typing import Dict, List, Union
 
 def list_stacks(raw_dir: Union[str, Path]) -> List[Path]:
     """
-    Retourne la liste triée des fichiers de piles 3D (.tif, .tiff, .stk)
-    présents dans `raw_dir`.
+    Returns the sorted list of 3D stack files (.tif, .tiff, .stk)
+    present in `raw_dir`.
     """
     raw_dir = Path(raw_dir)
     return sorted(
@@ -23,8 +23,8 @@ def save_annotation(
     mapping: Dict[str, str], save_path: Union[str, Path]
 ) -> None:
     """
-    Sauvegarde le dictionnaire d'annotations `{filename: class_label}` dans un fichier JSON.
-    `save_path` est le chemin vers le fichier JSON (p. ex. annotations.json).
+    Saves the annotation dictionary `{filename: class_label}` to a JSON file.
+    `save_path` is the path to the JSON file (e.g., annotations.json).
     """
     save_path = Path(save_path)
     save_path.parent.mkdir(parents=True, exist_ok=True)
@@ -34,8 +34,8 @@ def save_annotation(
 
 def load_annotation(save_path: Union[str, Path]) -> Dict[str, str]:
     """
-    Charge et retourne un dictionnaire d'annotations depuis un fichier JSON
-    créé par `save_annotation`.
+    Loads and returns a dictionary of annotations from a JSON file
+    created by `save_annotation`.
     """
     save_path = Path(save_path)
     if not save_path.exists():
@@ -44,26 +44,26 @@ def load_annotation(save_path: Union[str, Path]) -> Dict[str, str]:
         return json.load(f)
 
 
-def export_classified_folder(  # (pas utilisé)
+def export_classified_folder(  # (not used)
     mapping: Dict[str, str],
     raw_dir: Union[str, Path],
     out_dir: Union[str, Path],
 ) -> None:
     """
-    Pour chaque paire (filename → class_label) dans `mapping` :
-      - crée `out_dir/class_label/` si nécessaire,
-      - copie `raw_dir/filename` dans `out_dir/class_label/filename`.
+    For each pair (filename → class_label) in `mapping`:
+    - create `out_dir/class_label/` if necessary,
+    - copy `raw_dir/filename` to `out_dir/class_label/filename`.
 
-    `mapping` : dict mapping filename (string) to class label (string).
-    `raw_dir`  : dossier contenant les fichiers bruts.
-    `out_dir`  : dossier de destination, qui sera créé/modifié.
+    `mapping`: dict mapping filename (string) to class label (string).
+    `raw_dir`: folder containing the raw files.
+    `out_dir`: destination folder, which will be created/modified.
     """
     raw_dir = Path(raw_dir)
     out_dir = Path(out_dir)
     for fname, cls in mapping.items():
         src = raw_dir / fname
         if not src.exists():
-            # Ignorer les fichiers manquants
+            # Ignore missing files
             continue
         dest_dir = out_dir / cls
         dest_dir.mkdir(parents=True, exist_ok=True)

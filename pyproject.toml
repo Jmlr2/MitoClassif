@@ -5,8 +5,7 @@ description = "Mitoclass is a napari plugin for classifying mitochondrial morpho
 readme = "README.md"
 license = {file = "LICENSE"}
 authors = [
-  {name = "Jules Malard"},
-  {email = "malardjules2@gmail.com"},
+  {name = "Jules Malard", email = "malardjules2@gmail.com"}
 ]
 classifiers = [
     "Development Status :: 2 - Pre-Alpha",
@@ -25,17 +24,17 @@ classifiers = [
 ]
 requires-python = ">=3.10"
 dependencies = [
-    "numpy",                     # Numpy version compatible with TensorFlow
+     "numpy",
     "magicgui",
     "qtpy",
     "scikit-image",
-    "tensorflow",                 # Ensure the right version for TensorFlow
+    "tifffile",
+    "tensorflow",        # pin version if needed, e.g. 'tensorflow<2.16'
     "pandas",
-    "scikit-learn",               # Ensure correct installation of scikit-learn
-    "napari[all]",                 # Ensuring napari installation
-    "plotly"
-]
-
+    "scikit-learn",
+    "plotly",
+    "napari[all]",
+ ]
 [project.optional-dependencies]
 all = ["napari[all]"]            # Full installation for napari
 testing = [
