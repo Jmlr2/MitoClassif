@@ -1,9 +1,17 @@
-# Mitoclass
+# <img src="assets/mitoclass.png" alt="MitoClass logo" height="45" style="vertical-align: middle;"> Mitoclass         
+<p align="left">
+  <img src="assets/imhorphen.png" alt="IMHORPHEN" height="70" style="margin: 0 20px;">
+  <img src="assets/LARIS.png" alt="LARIS" height="70" style="margin: 0 20px;">
+  <img src="assets/ua.png" alt="Université d'Angers" height="70" style="margin: 0 20px;">
+</p>
+
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPL%20v3-blue.svg)](LICENSE)
 [![PyPI](https://img.shields.io/pypi/v/mitoclass.svg)](https://pypi.org/project/mitoclass/)
 [![Python ≥ 3.10](https://img.shields.io/badge/python-%3E%3D3.10-blue.svg)]()
 [![napari‑hub](https://img.shields.io/badge/napari--hub-mitoclass-orange.svg)](https://github.com/napari/napari-hub)
+
+
 
 A **napari** plugin for the **qualitative** assessment of mitochondrial network morphology.
 
