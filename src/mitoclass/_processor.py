@@ -179,6 +179,7 @@ def make_overlay_rgb(
     - non-uint8 dtype -> automatic convert_to_8bit,
     - cropping if base_img and class_map have different sizes.
     """
+    print("!!! [DBG] make_overlay_rgb CALLED (CE NE DEVRAIT PLUS ARRIVER)")
     arr = np.asarray(base_img)
 
     # 1) RGB/RGBA -> average of the 3 channels
@@ -193,7 +194,6 @@ def make_overlay_rgb(
 
     # 3) Convert to uint8 if needed
     if arr2d.dtype != np.uint8:
-        from ._pretreat import convert_to_8bit
 
         arr2d = convert_to_8bit(arr2d)
 
@@ -225,6 +225,32 @@ def make_overlay_rgb(
     return (base_rgb * alpha_base + color_map * alpha_map).astype(np.uint8)
 
 
+def build_heatmap_rgba(
+    class_map: np.ndarray,
+    colors: dict[int, tuple[int, int, int]] | None = None,
+    alpha: float = 0.4,
+) -> np.ndarray:
+
+    print(
+        "[DBG] build_heatmap_rgba  → shape:",
+        class_map.shape,
+        "dtype:",
+        class_map.dtype,
+        "uniq:",
+        np.unique(class_map),
+    )
+    if colors is None:
+        colors = {1: (255, 0, 0), 2: (0, 255, 0), 3: (0, 0, 255)}
+
+    h, w = class_map.shape
+    heat = np.zeros((h, w, 4), dtype=np.uint8)
+    a = int(alpha * 255)
+    for cls, (r, g, b) in colors.items():
+        mask = class_map == cls
+        heat[mask] = (r, g, b, a)
+    return heat
+
+
 def process_folder(
     input_dir: Path,
     output_dir: Path,
@@ -235,23 +261,24 @@ def process_folder(
     batch_size: int = 128,
     to_8bit: bool = False,
 ) -> Iterator[Union[int, pd.DataFrame]]:
-    """
-    Processes a folder of images and returns the progress index for each image.
-    When finished, returns the results DataFrame.
-    """
     model = load_model(model_path)
     output_dir.mkdir(parents=True, exist_ok=True)
+
+    # map_dir : on le recrée proprement (supprime anciens .tif)
     map_dir.mkdir(parents=True, exist_ok=True)
+    for old in map_dir.glob("*.tif"):
+        old.unlink()
 
     images = [
         p
         for p in sorted(input_dir.iterdir())
-        if p.suffix.lower() in {".tif", ".tiff", ".stk"}
+        if p.suffix.lower() in {".tif", ".tiff", ".stk", ".png"}
     ]
+
     results: list[dict] = []
 
     for idx, img_path in enumerate(images, start=1):
-        # inference
+        # ------------------ inférence ----------------------------
         best_class = infer_image(
             img_path,
             model,
@@ -271,17 +298,25 @@ def process_folder(
             }
         )
 
-        # overlay
-        data = tiff.imread(img_path)
-        overlay = make_overlay_rgb(data, best_class)
-        tiff.imwrite(map_dir / f"{img_path.stem}_map.tif", overlay)
+        # ------------------ heat‑map RGBA -------------------------
+        heatmap_rgba = build_heatmap_rgba(best_class, alpha=0.4)
+        assert heatmap_rgba.shape[-1] == 4, "Masque non‑RGBA !?"
+        print(
+            "[DBG] write",
+            f"{img_path.stem}_map.tif",
+            "| shape",
+            heatmap_rgba.shape,
+            "alpha uniq",
+            np.unique(heatmap_rgba[..., 3]),
+        )
 
-        # yield the index for progression
+        tiff.imwrite(map_dir / f"{img_path.stem}_map.tif", heatmap_rgba)
+
+        # notifier la progression
         yield idx
 
-    # end of loop → we compose the DataFrame, we export it and we return it
+    # ------------------ CSV final --------------------------------
     df = pd.DataFrame(results)
-
     df.to_csv(
         output_dir / "predictions.csv",
         sep=";",

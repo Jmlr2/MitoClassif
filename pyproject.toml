@@ -1,6 +1,6 @@
 [project]
 name = "mitoclass"
-dynamic = ["version"]
+version = "0.1.1.post3"
 description = "Mitoclass is a napari plugin for classifying mitochondrial morphology from microscopy images: it allows preprocessing data, training or using a model, predicting classes (connected, fragmented, intermediate), visualizing overlays and 3D summaries, and managing a prediction history."
 readme = "README.md"
 license = {file = "LICENSE"}
@@ -55,7 +55,7 @@ mitoclass = "mitoclass:napari.yaml"  # Ensure the right manifest file
 "User Support" = "https://github.com/ImHorPhen/mitoclass/issues"
 
 [build-system]
-requires = ["setuptools>=42.0.0", "wheel", "setuptools_scm"]
+requires = ["setuptools>=42.0.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
@@ -67,9 +67,6 @@ where = ["src"]
 [tool.setuptools.package-data]
 "*" = ["*.yaml"]
 
-[tool.setuptools_scm]
-write_to = "src/mitoclass/_version.py"
-fallback_version = "0.0.1+nogit"
 
 [tool.black]
 line-length = 79
