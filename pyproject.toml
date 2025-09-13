@@ -1,7 +1,7 @@
 [project]
 name = "mitoclass"
 version = "0.1.1.post3"
-description = "Mitoclass is a napari plugin for classifying mitochondrial morphology from microscopy images: it allows preprocessing data, training or using a model, predicting classes (connected, fragmented, intermediate), visualizing overlays and 3D summaries, and managing a prediction history."
+description = "Mitoclass is a napari plugin for classifying mitochondrial morphology from microscopy images: it allows preprocessing data, predicting classes (connected, fragmented, intermediate), visualizing overlays and 3D summaries, and managing a prediction history."
 readme = "README.md"
 license = {file = "LICENSE"}
 authors = [
@@ -49,10 +49,10 @@ testing = [
 mitoclass = "mitoclass:napari.yaml"  # Ensure the right manifest file
 
 [project.urls]
-"Bug Tracker" = "https://github.com/ImHorPhen/mitoclass/issues"
-"Documentation" = "https://github.com/ImHorPhen/mitoclass#README.md"
-"Source Code" = "https://github.com/ImHorPhen/mitoclass"
-"User Support" = "https://github.com/ImHorPhen/mitoclass/issues"
+"Bug Tracker" = "https://github.com/Jmlr2/MitoClassif/issues"
+"Documentation" = "https://github.com/Jmlr2/MitoClassif/blob/refacto/mitoclass-remanie/README.md"
+"Source Code" = "https://github.com/Jmlr2/MitoClassif"
+"User Support" = "https://github.com/Jmlr2/MitoClassif/issues"
 
 [build-system]
 requires = ["setuptools>=42.0.0", "wheel"]
