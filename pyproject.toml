@@ -1,14 +1,14 @@
 [project]
 name = "mitoclass"
-version = "0.1.1.post3"
+version = "1.0.0"
 description = "Mitoclass is a napari plugin for classifying mitochondrial morphology from microscopy images: it allows preprocessing data, predicting classes (connected, fragmented, intermediate), visualizing overlays and 3D summaries, and managing a prediction history."
 readme = "README.md"
 license = {file = "LICENSE"}
 authors = [
-  {name = "Jules Malard", email = "malardjules2@gmail.com"}
+  {name = "Jules Malard, David Rousseau, Arnaud Chevrollier", email = "malardjules2@gmail.com"}
 ]
 classifiers = [
-    "Development Status :: 2 - Pre-Alpha",
+    "Development Status :: 5 - Production/Stable",
     "Framework :: napari",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
